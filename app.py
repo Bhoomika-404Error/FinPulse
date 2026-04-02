@@ -404,7 +404,9 @@ def fetch_coins_inr():
                "?vs_currency=inr&order=market_cap_desc&per_page=10&page=1"
                "&sparkline=true&price_change_percentage=1h,24h,7d")
         r = requests.get(url, timeout=10)
-        return r.json()
+        data = r.json()
+        # CoinGecko returns a dict on error (rate limit etc) — must be a list
+        return data if isinstance(data, list) and len(data) > 0 else None
     except Exception:
         return None
 
@@ -416,7 +418,8 @@ def fetch_coins_usd():
                "?vs_currency=usd&order=market_cap_desc&per_page=10&page=1"
                "&sparkline=true&price_change_percentage=1h,24h,7d")
         r = requests.get(url, timeout=10)
-        return r.json()
+        data = r.json()
+        return data if isinstance(data, list) and len(data) > 0 else None
     except Exception:
         return None
 
@@ -539,6 +542,10 @@ with st.spinner(""):
 
 now_ist = datetime.utcnow()
 now_str = now_ist.strftime("%d %b %Y · %H:%M UTC")
+
+# Show warning if API rate-limited
+if not coins_inr and not coins_usd:
+    st.warning("⚠️ CoinGecko API is rate-limiting (free tier limit). Wait 1-2 min and refresh. Dashboard will auto-retry.", icon="⏳")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
