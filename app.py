@@ -634,7 +634,7 @@ sym   = "₹" if "INR" in currency_mode else "$"
 if coins:
     items = ""
     for c in coins:
-        chg  = c.get("price_change_percentage_24h") or 0
+        chg = c.get("price_change_percentage_24h", 0) if isinstance(c, dict) else 0
         cls  = "tick-up" if chg >= 0 else "tick-dn"
         arr  = "▲" if chg >= 0 else "▼"
         p    = c["current_price"]
