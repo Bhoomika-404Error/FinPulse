@@ -625,32 +625,41 @@ st.markdown(f"""
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TICKER TAPE
+# TICKER TAPE (FIXED)
 # ══════════════════════════════════════════════════════════════════════════════
 
 coins = coins_inr if "INR" in currency_mode else coins_usd
-sym   = "₹" if "INR" in currency_mode else "$"
 
 if coins:
     items = ""
-    for c in coins:
-        chg = c.get("price_change_percentage_24h", 0) if isinstance(c, dict) else 0
-        cls  = "tick-up" if chg >= 0 else "tick-dn"
-        arr  = "▲" if chg >= 0 else "▼"
-        p    = c["current_price"]
-        p_fmt = fmt_price_inr(p) if "INR" in currency_mode else fmt_price_usd(p)
-        if currency_mode == "🔀 Both":
-            p_inr = fmt_price_inr(p * inr_rate) if "USD" in currency_mode else fmt_price_inr(p)
-            items += f'<span class="tick-item"><span class="tick-sym">{c["symbol"].upper()}</span><span class="{cls}">{p_fmt} {arr}{abs(chg):.1f}%</span></span>'
-        else:
-            items += f'<span class="tick-item"><span class="tick-sym">{c["symbol"].upper()}</span><span class="{cls}">{p_fmt} {arr}{abs(chg):.1f}%</span></span>'
 
+    for c in coins:
+        if not isinstance(c, dict):
+            continue
+
+        if "current_price" not in c or "symbol" not in c:
+            continue
+
+        chg = c.get("price_change_percentage_24h", 0) or 0
+        cls = "tick-up" if chg >= 0 else "tick-dn"
+        arr = "▲" if chg >= 0 else "▼"
+
+        p = c.get("current_price", 0)
+        p_fmt = fmt_price_inr(p) if "INR" in currency_mode else fmt_price_usd(p)
+
+        items += f'''
+        <span class="tick-item">
+            <span class="tick-sym">{c["symbol"].upper()}</span>
+            <span class="{cls}">{p_fmt} {arr}{abs(chg):.1f}%</span>
+        </span>
+        '''
+
+    # 🔥 IMPORTANT: render OUTSIDE loop
     st.markdown(f"""
     <div class="ticker-outer">
         <div class="ticker-scroll">{items * 3}</div>
     </div>
     """, unsafe_allow_html=True)
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # KPI CARDS
