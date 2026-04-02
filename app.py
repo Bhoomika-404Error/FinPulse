@@ -625,41 +625,32 @@ st.markdown(f"""
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TICKER TAPE (FIXED)
+# TICKER TAPE
 # ══════════════════════════════════════════════════════════════════════════════
 
 coins = coins_inr if "INR" in currency_mode else coins_usd
+sym   = "₹" if "INR" in currency_mode else "$"
 
 if coins:
     items = ""
-
     for c in coins:
-        if not isinstance(c, dict):
-            continue
-
-        if "current_price" not in c or "symbol" not in c:
-            continue
-
-        chg = c.get("price_change_percentage_24h", 0) or 0
-        cls = "tick-up" if chg >= 0 else "tick-dn"
-        arr = "▲" if chg >= 0 else "▼"
-
-        p = c.get("current_price", 0)
+        chg  = c.get("price_change_percentage_24h") or 0
+        cls  = "tick-up" if chg >= 0 else "tick-dn"
+        arr  = "▲" if chg >= 0 else "▼"
+        p    = c.get("current_price", 0)
         p_fmt = fmt_price_inr(p) if "INR" in currency_mode else fmt_price_usd(p)
+        if currency_mode == "🔀 Both":
+            p_inr = fmt_price_inr(p * inr_rate) if "USD" in currency_mode else fmt_price_inr(p)
+            items += f'<span class="tick-item"><span class="tick-sym">{c.get("symbol", "?").upper()}</span><span class="{cls}">{p_fmt} {arr}{abs(chg):.1f}%</span></span>'
+        else:
+            items += f'<span class="tick-item"><span class="tick-sym">{c.get("symbol", "?").upper()}</span><span class="{cls}">{p_fmt} {arr}{abs(chg):.1f}%</span></span>'
 
-        items += f'''
-        <span class="tick-item">
-            <span class="tick-sym">{c["symbol"].upper()}</span>
-            <span class="{cls}">{p_fmt} {arr}{abs(chg):.1f}%</span>
-        </span>
-        '''
-
-    # 🔥 IMPORTANT: render OUTSIDE loop
     st.markdown(f"""
     <div class="ticker-outer">
         <div class="ticker-scroll">{items * 3}</div>
     </div>
     """, unsafe_allow_html=True)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # KPI CARDS
@@ -746,7 +737,7 @@ with c4:
 
 with c5:
     btc_price_coins = coins_inr if "INR" in currency_mode else coins_usd
-    btc_live = next((c for c in (btc_price_coins or []) if c["id"] == "bitcoin"), None)
+    btc_live = next((c for c in (btc_price_coins or []) if c.get("id") == "bitcoin" or c.get("symbol", "").lower() == "btc"), None)
     btc_p = fmt_price_inr(btc_live["current_price"]) if btc_live and "INR" in currency_mode \
             else fmt_price_usd(btc_live["current_price"]) if btc_live else "—"
     btc_chg = btc_live.get("price_change_percentage_24h") if btc_live else None
@@ -837,7 +828,7 @@ if coins_inr:
     top3 = coins_inr[:3]
     for col, c in zip([ia, ib, ic], top3):
         with col:
-            p_inr = c["current_price"]
+            p_inr = c.get("current_price", 0)
             p_usd = p_inr / inr_rate
             chg24 = c.get("price_change_percentage_24h") or 0
             chg7d = c.get("price_change_percentage_7d_in_currency") or 0
@@ -947,19 +938,19 @@ active_coins = coins_inr if use_inr else coins_usd
 if active_coins:
     rows = []
     for c in active_coins:
-        p     = c["current_price"]
+        p     = c.get("current_price", 0)
         p_inr = p if use_inr else p * inr_rate
         p_usd = p / inr_rate if use_inr else p
         rows.append({
             "#":          c.get("market_cap_rank", "—"),
-            "Asset":      f'{c["name"]} ({c["symbol"].upper()})',
+            "Asset":      f'{c.get("name", "Unknown")} ({c.get("symbol", "?").upper()})',
             "Price (₹)":  fmt_price_inr(p_inr),
             "Price ($)":  fmt_price_usd(p_usd),
             "1h %":       round(c.get("price_change_percentage_1h_in_currency") or 0, 2),
             "24h %":      round(c.get("price_change_percentage_24h") or 0, 2),
             "7d %":       round(c.get("price_change_percentage_7d_in_currency") or 0, 2),
-            "Mkt Cap":    fmt_inr(c["market_cap"]) if use_inr else fmt_usd(c["market_cap"]),
-            "Vol 24h":    fmt_inr(c["total_volume"]) if use_inr else fmt_usd(c["total_volume"]),
+            "Mkt Cap":    fmt_inr(c.get("market_cap", 0)) if use_inr else fmt_usd(c.get("market_cap", 0)),
+            "Vol 24h":    fmt_inr(c.get("total_volume", 0)) if use_inr else fmt_usd(c.get("total_volume", 0)),
         })
 
     df_t = pd.DataFrame(rows)
@@ -1003,7 +994,7 @@ st.markdown('<div class="sec-head">Risk vs Return · 24h Snapshot</div>', unsafe
 
 if active_coins:
     sdf = pd.DataFrame([{
-        "coin":  c["symbol"].upper(),
+        "coin":  c.get("symbol", "?").upper(),
         "chg":   c.get("price_change_percentage_24h") or 0,
         "vol":   c.get("total_volume") or 0,
         "mcap":  c.get("market_cap") or 0,
@@ -1063,7 +1054,7 @@ if active_coins:
                 ))
                 fig_s.update_layout(
                     title=dict(
-                        text=f'<span style="color:#94a3b8">{c["symbol"].upper()}</span> '
+                        text=f'<span style="color:#94a3b8">{c.get("symbol", "?").upper()}</span> '
                              f'<span style="color:{clr};font-size:10px">{"▲" if chg>=0 else "▼"}{abs(chg):.1f}%</span>',
                         font=dict(size=11, family="DM Mono"),
                         x=0.05, y=0.95,
